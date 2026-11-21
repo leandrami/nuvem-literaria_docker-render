@@ -13,6 +13,8 @@
   </head>
   <body>
     <div id="root"></div>
+    <!-- Carrega o env-config.js (gerado pelo env.sh) ANTES do React, para o window.__ENV__ já existir quando o app iniciar -->
+    <script src="/env-config.js"></script>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
