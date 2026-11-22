@@ -1,0 +1,137 @@
+name: CI/CD LendoMais
+
+# QUANDO a pipeline roda:
+on:
+  push:
+    branches: [main]        # a cada push na main -> CI + CD completo
+  pull_request:
+    branches: [main]        # em Pull Request -> só CI (não publica nada)
+
+env:
+  DOCKER_USER: leandrami
+
+jobs:
+  # ==========================================================
+  # JOB 1: BACKEND (API)
+  # ==========================================================
+  backend:
+    name: Backend (API)
+    runs-on: ubuntu-latest   # máquina virtual Linux que o GitHub empresta de graça
+
+    steps:
+      # PASSO 1: baixa o código do repositório para dentro da máquina
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      # PASSO 2: instala o Node (mesma versão do Dockerfile)
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: backend/package-lock.json   # acelera os próximos runs
+
+      # PASSO 3 (CI): instala as dependências exatamente como estão no lock.
+      # Se o package-lock estiver quebrado, a pipeline falha aqui e avisa cedo.
+      - name: Instalar dependências
+        working-directory: backend
+        run: npm ci
+
+      # PASSO 4 (CI): confere se os arquivos principais carregam sem erro de sintaxe.
+      # (o projeto não tem testes automáticos; este é o teste mínimo possível)
+      - name: Checar sintaxe do código
+        working-directory: backend
+        run: node --check src/server.js && node --check src/app.js
+
+      # PASSO 5: prepara o Docker Buildx (ferramenta que constrói imagens)
+      - name: Preparar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # PASSO 6: login no Docker Hub com os SEGREDOS do repositório.
+      # "if" = só faz login em push na main (em Pull Request não publica nada).
+      - name: Login no Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # PASSO 7: constrói a imagem e, se for push na main, envia ao Docker Hub.
+      # Duas tags: "latest" (sempre a mais nova) e o código do commit (rastreável).
+      - name: Construir e publicar a imagem
+        uses: docker/build-push-action@v6
+        with:
+          context: backend
+          platforms: linux/amd64          # o Render exige amd64
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.DOCKER_USER }}/lendomais-api:latest
+            ${{ env.DOCKER_USER }}/lendomais-api:${{ github.sha }}
+          cache-from: type=gha            # reaproveita camadas de builds anteriores
+          cache-to: type=gha,mode=max
+
+      # PASSO 8 (CD): avisa o Render para baixar a imagem nova.
+      # O "imgURL" diz QUAL tag o Render deve usar (o commit que acabou de subir).
+      # %2F = "/" e %3A = ":" (o Render exige a URL codificada).
+      - name: Avisar o Render (deploy da API)
+        if: github.event_name == 'push'
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_API }}
+        run: |
+          curl -fsS "${HOOK}&imgURL=docker.io%2F${DOCKER_USER}%2Flendomais-api%3A${{ github.sha }}"
+
+  # ==========================================================
+  # JOB 2: FRONTEND (React)
+  # ==========================================================
+  frontend:
+    name: Frontend (React)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Instalar Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Instalar dependências
+        working-directory: frontend
+        run: npm ci
+
+      # CI: gera a versão de produção do React. Se tiver erro no código, falha aqui.
+      - name: Testar o build do React
+        working-directory: frontend
+        run: npm run build
+
+      - name: Preparar Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login no Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ env.DOCKER_USER }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Construir e publicar a imagem
+        uses: docker/build-push-action@v6
+        with:
+          context: frontend
+          platforms: linux/amd64
+          push: ${{ github.event_name == 'push' }}
+          tags: |
+            ${{ env.DOCKER_USER }}/lendomais-web:latest
+            ${{ env.DOCKER_USER }}/lendomais-web:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Avisar o Render (deploy do front)
+        if: github.event_name == 'push'
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_WEB }}
+        run: |
+          curl -fsS "${HOOK}&imgURL=docker.io%2F${DOCKER_USER}%2Flendomais-web%3A${{ github.sha }}"

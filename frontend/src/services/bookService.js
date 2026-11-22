@@ -1,7 +1,14 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api',
+  // Ordem de prioridade para descobrir o endereço da API:
+  // 1) window.__ENV__: valor injetado pelo env.sh quando o contêiner liga (Render)
+  // 2) import.meta.env: valor do .env no desenvolvimento local
+  // 3) localhost: último recurso
+  baseURL:
+    window.__ENV__?.VITE_API_URL ||
+    import.meta.env.VITE_API_URL ||
+    'http://localhost:3001/api',
 });
 
 export const bookService = {

@@ -19,13 +19,13 @@ RUN npm ci
 COPY . .
 
 # define a variável PORT padrão.
-# O Render sobrescreve isso com a porta dele; localmente usa 3000
-ENV PORT=3000
+# O Render sobrescreve isso com a porta dele; localmente usa 3001
+ENV PORT=3001
 
-# documentação, "este contêiner escuta na porta 3000"
+# documentação, "este contêiner escuta na porta 3001"
 # mas não abre a porta de verdade (quem abre é o 'docker run -p' ou o Render)
-EXPOSE 3000
+EXPOSE 3001
 
 # comando que roda quando o contêiner INICIA.
-# Formato de lista, ou seja, executa direto, sem shell (encerra bem com Ctrl+C)
+# formato de lista, ou seja, executa direto, sem shell (encerra bem com Ctrl+C)
 CMD ["node", "src/server.js"]
