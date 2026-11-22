@@ -17,17 +17,17 @@ Deploy em nuvem de uma aplicação de catálogo de livros (React, Node.js e Post
 
 ## 🚧 Maior desafio técnico
 
-...
+Neste projeto o principal desafio foi a comunicação entre o frontend e backend dentro do Render, usando as imagens publicadas no Docker Hub. O código apontava para o localhost e liberava o CORS para qualquer origem, o que não é indicado em produção, então o script env.sh foi criado para gerar um arquivo de configuração quando o container iniciar, pois as variáveis do Vite são gravadas durante a build e o Render deixa as variáveis disponíveis só depois, dessa forma o frontend passa a ler a URL da API presente nesse container. Ao gerar as imagens, o front foi construído em duas partes, Node para a construção e o Nginx para entregar a aplicação (site) ao navegador, pela porta do Render e o try_files no Nginx para garantir o roteamento do React. Já na API, a conexão com o banco passou a usar DATABASE_URL e o CORS passou a aceitar apenas a origem do frontend, FRONTEND_URL. O sufixo /api na URL teve que ser ajustado na variável VITE_API_URL, pois as rotas do backend são identificadas pelo prefixo /api, sem isso o front chamaria .../books e receberia erro 404.
 
 ---
 
 ## 🔗 Links
 
-| 🌐 Recurso | Endereço |
-|---|---|
-| 🖥️ Frontend | https://lendomais-web.onrender.com |
-| ⚙️ API | https://lendomais-api-v1.onrender.com/api/books |
-| 🐳 Imagem Docker (API) | https://hub.docker.com/r/leandrami/lendomais-api |
+| 🌐 Recurso                  | Endereço                                         |
+| --------------------------- | ------------------------------------------------ |
+| 🖥️ Frontend                 | https://lendomais-web.onrender.com               |
+| ⚙️ API                      | https://lendomais-api-v1.onrender.com/api/books  |
+| 🐳 Imagem Docker (API)      | https://hub.docker.com/r/leandrami/lendomais-api |
 | 🐳 Imagem Docker (Frontend) | https://hub.docker.com/r/leandrami/lendomais-web |
 
 > ⏳ O Render utiliza plano gratuito: a primeira requisição após um período de inatividade pode levar cerca de 1 minuto.
@@ -52,11 +52,11 @@ A cada push na branch `main`, o workflow [`ci-cd.yml`](.github/workflows/ci-cd.y
 
 ## ⚙️ Variáveis de ambiente
 
-| Serviço | Variável | Função |
-|---|---|---|
-| ⚙️ API | `DATABASE_URL` | Conexão com o PostgreSQL |
-| ⚙️ API | `FRONTEND_URL` | Origem permitida pelo CORS |
-| 🖥️ Frontend | `VITE_API_URL` | URL base da API |
+| Serviço     | Variável       | Função                     |
+| ----------- | -------------- | -------------------------- |
+| ⚙️ API      | `DATABASE_URL` | Conexão com o PostgreSQL   |
+| ⚙️ API      | `FRONTEND_URL` | Origem permitida pelo CORS |
+| 🖥️ Frontend | `VITE_API_URL` | URL base da API            |
 
 ---
 
